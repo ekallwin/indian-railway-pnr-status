@@ -289,7 +289,7 @@ export default function PnrStatus() {
                                     <div className="rl-mid">
                                         <em>{dur || "—"}</em>
                                         <div className="rl-rail"><TrainIcon /></div>
-                                        <small>{data.distance != null ? `${data.distance} km` : ""}</small>
+                                        <small>{data.distance != null ? `${data.distance} KM` : ""}</small>
                                     </div>
                                     <div className="rl-stn end">
                                         <b>{data.destination_station}</b>
@@ -328,7 +328,7 @@ export default function PnrStatus() {
                                     <div><dt>Journey date &amp; time</dt><dd>{fmtDateTime(data.journey_date)}</dd></div>
                                     <div><dt>Arrival date &amp; time</dt><dd>{fmtDateTime(data.arrival_date)}</dd></div>
                                     <div><dt>Booked on</dt><dd>{fmtDateTime(data.booking_date)}</dd></div>
-                                    <div><dt>Distance</dt><dd>{data.distance != null ? `${data.distance} km` : "-"}</dd></div>
+                                    <div><dt>Distance</dt><dd>{data.distance != null ? `${data.distance} KM` : "-"}</dd></div>
                                     <div><dt>Boarding point</dt><dd>{data.boarding_point}</dd></div>
                                     <div><dt>Reserved upto</dt><dd>{data.reservation_upto}</dd></div>
                                     
