@@ -392,7 +392,7 @@ export default function PnrStatus() {
                                     </div>
                                     <aside className="rl-stub">
                                         <div>
-                                            <small>Status</small>
+                                            <small>Current status</small>
                                             <span className="rl-badge">{p.currentStatus}</span>
                                         </div>
                                     </aside>
