@@ -1,7 +1,6 @@
 {
   "redirects": [
     {
-      "source": "/api/:path*",
       "destination": "/",
       "permanent": true
     }
