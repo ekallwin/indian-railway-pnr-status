@@ -1,4 +1,4 @@
-// Place at: api/pnr/[pnr].js
+// Place at: api/station/[code].js
 export default async function handler(req, res) {
   const accept = req.headers.accept || "";
 
@@ -10,45 +10,35 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const pnr = req.query.pnr;
+  const code = String(req.query.code || "").trim();
 
-  if (!pnr || !/^\d{10}$/.test(pnr)) {
-    return res.status(400).json({
-      error: "Please provide a valid 10-digit PNR"
-    });
+  if (!/^[A-Za-z0-9]{1,6}$/.test(code)) {
+    return res.status(400).json({ error: "Please provide a valid station code" });
   }
 
-  const baseUrl = process.env.PNR_API_URL;
+  const baseUrl = process.env.STATION_API_URL;
 
   if (!baseUrl) {
     return res.status(500).json({
-      error: "PNR_API_URL environment variable is missing"
+      error: "STATION_API_URL environment variable is missing"
     });
   }
 
   try {
-    const targetUrl = `${baseUrl.replace(/\/+$/, "")}/${pnr}`;
+    const targetUrl = `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}q=${encodeURIComponent(code)}`;
 
     const response = await fetch(targetUrl, {
       method: "GET",
-      headers: {
-        Accept: "application/json"
-      }
+      headers: { Accept: "application/json" }
     });
 
-    const contentType = response.headers.get("content-type");
     const data = await response.text();
 
-    res.setHeader(
-      "Content-Type",
-      contentType || "application/json"
-    );
-
+    res.setHeader("Content-Type", response.headers.get("content-type") || "application/json");
+    res.setHeader("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=604800");
     return res.status(response.status).send(data);
   } catch (error) {
-    return res.status(502).json({
-      error: "Unable to connect to PNR service",
-      details: error.message
-    });
+    // Don't leak the upstream URL in error details
+    return res.status(502).json({ error: "Unable to connect to station service" });
   }
 }
