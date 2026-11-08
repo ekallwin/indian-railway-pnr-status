@@ -1,4 +1,3 @@
-// Place at: api/station/[code].js
 export default async function handler(req, res) {
   const accept = req.headers.accept || "";
 
@@ -38,7 +37,6 @@ export default async function handler(req, res) {
     res.setHeader("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=604800");
     return res.status(response.status).send(data);
   } catch (error) {
-    // Don't leak the upstream URL in error details
     return res.status(502).json({ error: "Unable to connect to station service" });
   }
 }
