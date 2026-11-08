@@ -1,24 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { Fragment, useState, useRef, useEffect } from "react";
 import "./Pnrstatus.css";
 
 const API_URL = "/api/pnr/";
 const STATION_API_URL = "/api/station/";
-
-async function fetchStationName(code, signal) {
-    const c = String(code || "").trim().toUpperCase();
-    if (!c) return "";
-    try {
-        const res = await fetch(`${STATION_API_URL}${encodeURIComponent(c)}`, { signal });
-        if (!res.ok) return "";
-        const json = await res.json();
-        const hit = (json?.items || []).find(
-            (i) => String(i.station_code || "").toUpperCase() === c
-        );
-        return hit?.station_name || "";
-    } catch (err) {
-        return "";
-    }
-}
 
 const CLASS_NAMES = {
     SL: "Sleeper", "1A": "First AC", "2A": "AC 2 Tier", "3A": "AC 3 Tier",
@@ -30,28 +14,14 @@ const QUOTA_NAMES = {
     SS: "Senior Citizen", HP: "Divyang", DF: "Defence", YU: "Yuva",
     DP: "Duty Pass", RQ: "Roadside", RS: "Roadside",
 };
-const TICKET_TYPES = { E: "E-Ticket", P: "Railway Station Counter Ticket", I: "I-Ticket", S: "Railway Station Counter Ticket" };
-
-// Berth / seat codes used across all coach types
-const BERTH_NAMES = {
-    LB: "Lower Berth",
-    MB: "Middle Berth",
-    UB: "Upper Berth",
-    SL: "Side Lower",
-    SM: "Side Middle",
-    SU: "Side Upper",
-    CP: "Coupe",
-    CB: "Cabin",
-    W: "Window",
-    WS: "Window Side",
-    M: "Middle",
-    MS: "Middle Side",
-    A: "Aisle",
-    AS: "Aisle Side",
+const TICKET_TYPES = {
+    E: "E-Ticket", P: "Railway Station Counter Ticket", I: "I-Ticket", S: "Railway Station Counter Ticket",
 };
-const berthName = (code) => {
-    const c = String(code || "").trim().toUpperCase();
-    return BERTH_NAMES[c] || c;
+const BERTH_NAMES = {
+    LB: "Lower Berth", MB: "Middle Berth", UB: "Upper Berth",
+    SL: "Side Lower", SM: "Side Middle", SU: "Side Upper",
+    CP: "Coupe", CB: "Cabin",
+    W: "Window", WS: "Window Side", M: "Middle", MS: "Middle Side", A: "Aisle", AS: "Aisle Side",
 };
 
 const LEGEND = [
@@ -71,13 +41,17 @@ const LEGEND = [
     ["DPWL", "Duty Pass Waitlist"],
     ["TQWL", "Tatkal Quota Waitlist"],
     ["NT", "Passenger Not Turned Up"],
-    ["TDR", "Passenger has filed TDR"]
+    ["TDR", "Passenger has filed TDR"],
 ];
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const pad = (n) => String(n).padStart(2, "0");
 
-/** Parses "Nov 20, 2026 9:00:00 PM" without relying on Date.parse. */
+const berthName = (code) => {
+    const c = String(code || "").trim().toUpperCase();
+    return BERTH_NAMES[c] || c;
+};
+
 function parseApiDate(str) {
     if (!str) return null;
     const m = str.match(
@@ -92,24 +66,30 @@ function parseApiDate(str) {
     if (ap === "AM" && hour === 12) hour = 0;
     return { day: +m[2], month, year: +m[3], hour, minute: +m[5] };
 }
+
 const fmtDate = (s) => {
     const d = parseApiDate(s);
     return d ? `${pad(d.day)} ${MONTHS[d.month]} ${d.year}` : s || "-";
 };
+
 const fmtTime = (s) => {
     const d = parseApiDate(s);
     if (!d) return "-";
     const h12 = d.hour % 12 === 0 ? 12 : d.hour % 12;
     return `${pad(h12)}:${pad(d.minute)} ${d.hour >= 12 ? "PM" : "AM"}`;
 };
+
 const fmtDateTime = (s) => (parseApiDate(s) ? `${fmtDate(s)}, ${fmtTime(s)}` : s || "-");
+
 function duration(a, b) {
-    const x = parseApiDate(a), y = parseApiDate(b);
+    const x = parseApiDate(a);
+    const y = parseApiDate(b);
     if (!x || !y) return "";
     const t = (d) => Date.UTC(d.year, d.month, d.day, d.hour, d.minute);
     const mins = Math.round((t(y) - t(x)) / 60000);
     return mins > 0 ? `${Math.floor(mins / 60)}h ${pad(mins % 60)}m` : "";
 }
+
 function tone(status = "") {
     const s = status.toUpperCase();
     if (s.startsWith("CNF")) return "ok";
@@ -118,11 +98,28 @@ function tone(status = "") {
     if (s.includes("WL")) return "wl";
     return "neutral";
 }
+
 function seatText(coach, no, code, details) {
     if (coach && no) {
         return `Coach ${coach} - ${no}${code ? ` (${berthName(code)})` : ""}`;
     }
     return details || "";
+}
+
+async function fetchStationName(code, signal) {
+    const c = String(code || "").trim().toUpperCase();
+    if (!c) return "";
+    try {
+        const res = await fetch(`${STATION_API_URL}${encodeURIComponent(c)}`, { signal });
+        if (!res.ok) return "";
+        const json = await res.json();
+        const hit = (json?.items || []).find(
+            (i) => String(i.station_code || "").toUpperCase() === c
+        );
+        return hit?.station_name || "";
+    } catch {
+        return "";
+    }
 }
 
 const TrainIcon = () => (
@@ -135,7 +132,6 @@ const TrainIcon = () => (
     </svg>
 );
 
-/** Vande Bharat style train: white body, orange stripe, dark windows, pointed nose */
 function TrainScene({ running }) {
     const coachX = [8, 238, 468];
     const wheel = (cx) => (
@@ -144,6 +140,7 @@ function TrainScene({ running }) {
             <circle cx={cx} cy="97" r="2.4" fill="#9ca3af" />
         </g>
     );
+
     return (
         <div className={`rl-scene ${running ? "run" : ""}`} aria-hidden="true">
             <div className="rl-trainwrap">
@@ -157,7 +154,6 @@ function TrainScene({ running }) {
                         </clipPath>
                     </defs>
 
-                    {/* passenger coaches */}
                     {coachX.map((x) => (
                         <g key={x}>
                             <rect x={x} y="30" width="222" height="58" rx="8" fill="#ffffff" stroke="#e5e7eb" />
@@ -171,7 +167,6 @@ function TrainScene({ running }) {
                         </g>
                     ))}
 
-                    {/* engine / driving car with pointed nose */}
                     <path d="M698 28 H806 C866 28 918 54 944 82 L944 88 H698 Z" fill="#ffffff" stroke="#e5e7eb" />
                     <g clipPath="url(#vb-nose)">
                         <rect x="698" y="64" width="260" height="9" fill="#f97316" />
@@ -203,14 +198,17 @@ export default function PnrStatus() {
 
     useEffect(() => () => abortRef.current?.abort(), []);
 
-    // Resolve station codes to names whenever a new result arrives
     useEffect(() => {
         const d = result?.data;
         if (!d) return;
+
         const controller = new AbortController();
-        const codes = [...new Set([d.source_station, d.destination_station]
-            .map((c) => String(c || "").trim().toUpperCase())
-            .filter(Boolean))];
+        const codes = [...new Set(
+            [d.source_station, d.destination_station]
+                .map((c) => String(c || "").trim().toUpperCase())
+                .filter(Boolean)
+        )];
+
         Promise.all(
             codes.map(async (code) => {
                 if (stationCache.current[code] === undefined) {
@@ -221,6 +219,7 @@ export default function PnrStatus() {
         ).then((pairs) => {
             if (!controller.signal.aborted) setStationNames(Object.fromEntries(pairs));
         });
+
         return () => controller.abort();
     }, [result]);
 
@@ -240,10 +239,13 @@ export default function PnrStatus() {
             setError("Please enter a valid 10 digit PNR number.");
             return;
         }
+
         abortRef.current?.abort();
         const controller = new AbortController();
         abortRef.current = controller;
-        setLoading(true); setError(""); setResult(null);
+        setLoading(true);
+        setError("");
+        setResult(null);
 
         try {
             const res = await fetch(`${API_URL}${pnr}`, { signal: controller.signal });
@@ -273,12 +275,10 @@ export default function PnrStatus() {
 
     const data = result?.data;
     const pax = data?.passengers || [];
-    // Vikalp is shown only when the ticket was NOT confirmed at booking time
     const showVikalp =
         !!data?.vikalp_status &&
         pax.some((p) => !String(p.bookingStatus || "").toUpperCase().startsWith("CNF"));
     const dur = data ? duration(data.journey_date, data.arrival_date) : "";
-    // info_message can be [""], so drop empty strings
     const infoMessages = (data?.info_message || []).map((m) => String(m || "").trim()).filter(Boolean);
 
     return (
@@ -315,7 +315,6 @@ export default function PnrStatus() {
             <main className="rl-main">
                 {data && (
                     <>
-                        {/* 1. Journey ticket */}
                         <article className="rl-ticket">
                             <div className="rl-tk-main">
                                 <div className="rl-tk-head">
@@ -330,7 +329,7 @@ export default function PnrStatus() {
 
                                 <div className="rl-route">
                                     <div className="rl-stn">
-                                        <b>{data.boarding_point}</b>
+                                        <b title={data.source_station}>{stnLabel(data.source_station)}</b>
                                         <span>{fmtTime(data.journey_date)}</span>
                                         <small>{fmtDate(data.journey_date)}</small>
                                     </div>
@@ -340,7 +339,7 @@ export default function PnrStatus() {
                                         <small>{data.distance != null ? `${data.distance} KM` : ""}</small>
                                     </div>
                                     <div className="rl-stn end">
-                                        <b>{data.destination_station}</b>
+                                        <b title={data.destination_station}>{stnLabel(data.destination_station)}</b>
                                         <span>{fmtTime(data.arrival_date)}</span>
                                         <small>{fmtDate(data.arrival_date)}</small>
                                     </div>
@@ -367,15 +366,14 @@ export default function PnrStatus() {
                                 <div className="rl-remark bad">{data.train_cancel_status}</div>
                             </>
                         )}
-                        {infoMessages.map((m, i) => (
-                            <>
-                                <h3 className="rl-sec" key={`info-${i}`}>Remarks</h3>
-                                <div className="rl-remark" key={i}>{m}</div>
 
-                            </>
+                        {infoMessages.map((m, i) => (
+                            <Fragment key={i}>
+                                <h3 className="rl-sec">Remarks</h3>
+                                <div className="rl-remark">{m}</div>
+                            </Fragment>
                         ))}
 
-                        {/* 2. Booking details ticket */}
                         <h3 className="rl-sec">Booking details</h3>
                         <article className="rl-ticket">
                             <div className="rl-tk-main">
@@ -384,16 +382,23 @@ export default function PnrStatus() {
                                     <div><dt>Arrival date &amp; time</dt><dd>{fmtDateTime(data.arrival_date)}</dd></div>
                                     <div><dt>Booked on</dt><dd>{fmtDateTime(data.booking_date)}</dd></div>
                                     <div><dt>Distance</dt><dd>{data.distance != null ? `${data.distance} KM` : "-"}</dd></div>
-                                    <div><dt>Boarding point</dt><dd>{stnLabel(data.source_station)}</dd></div>
-                                    <div><dt>Reserved upto</dt><dd>{stnLabel(data.destination_station)}</dd></div>
-
+                                    <div><dt>Boarding point</dt><dd>{data.boarding_point}</dd></div>
+                                    <div><dt>Reserved upto</dt><dd>{data.reservation_upto}</dd></div>
                                     <div>
                                         <dt>Class</dt>
-                                        <dd>{CLASS_NAMES[data.journey_class] ? `${CLASS_NAMES[data.journey_class]} (${data.journey_class})` : data.journey_class}</dd>
+                                        <dd>
+                                            {CLASS_NAMES[data.journey_class]
+                                                ? `${CLASS_NAMES[data.journey_class]} (${data.journey_class})`
+                                                : data.journey_class}
+                                        </dd>
                                     </div>
                                     <div>
                                         <dt>Quota</dt>
-                                        <dd>{QUOTA_NAMES[data.quota] ? `${QUOTA_NAMES[data.quota]} (${data.quota})` : data.quota || "-"}</dd>
+                                        <dd>
+                                            {QUOTA_NAMES[data.quota]
+                                                ? `${QUOTA_NAMES[data.quota]} (${data.quota})`
+                                                : data.quota || "-"}
+                                        </dd>
                                     </div>
                                 </dl>
                             </div>
@@ -419,7 +424,6 @@ export default function PnrStatus() {
                             </aside>
                         </article>
 
-                        {/* 3. Passenger tickets: Booking status  →  Current status */}
                         <h3 className="rl-sec">
                             Passengers <span>{data.passenger_count ?? pax.length}</span>
                         </h3>
@@ -458,7 +462,7 @@ export default function PnrStatus() {
                         <p className="rl-note">
                             If the final chart is not prepared, the current status may upgrade or downgrade later.
                         </p>
-                        {/* 4. Status code guide */}
+
                         <h3 className="rl-sec">Status code guide</h3>
                         <article className="rl-ticket one">
                             <div className="rl-tk-main">
@@ -472,6 +476,7 @@ export default function PnrStatus() {
                     </>
                 )}
             </main>
+
             <footer className="rl-footer">
                 &copy; {new Date().getFullYear()} Developed by{" "}
                 <a
