@@ -32,7 +32,6 @@ export default async function handler(req, res) {
     const data = await response.text();
 
     res.setHeader("Content-Type", response.headers.get("content-type") || "application/json");
-    res.setHeader("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=604800");
     return res.status(response.status).send(data);
   } catch {
     return res.status(502).json({ error: "Unable to connect to station service" });
