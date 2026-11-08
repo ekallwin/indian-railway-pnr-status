@@ -382,8 +382,8 @@ export default function PnrStatus() {
                                     <div><dt>Arrival date &amp; time</dt><dd>{fmtDateTime(data.arrival_date)}</dd></div>
                                     <div><dt>Booked on</dt><dd>{fmtDateTime(data.booking_date)}</dd></div>
                                     <div><dt>Distance</dt><dd>{data.distance != null ? `${data.distance} KM` : "-"}</dd></div>
-                                    <div><dt>Boarding point</dt><dd>{stnLabel(data.source_station)}</dd></div>
-                                    <div><dt>Reserved upto</dt><dd>{stnLabel(data.reservation_upto)}</dd></div>
+                                    <div><dt>Boarding point</dt><dd>{stnLabel(data.source_station)} ({data.source_station})</dd></div>
+                                    <div><dt>Reserved upto</dt><dd>{stnLabel(data.reservation_upto)} ({data.destination_station})</dd></div>
                                     <div>
                                         <dt>Class</dt>
                                         <dd>
