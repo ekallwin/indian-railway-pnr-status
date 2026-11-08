@@ -2,6 +2,23 @@ import { useState, useRef, useEffect } from "react";
 import "./Pnrstatus.css";
 
 const API_URL = "/api/pnr/";
+const STATION_API_URL = "/api/station/";
+
+async function fetchStationName(code, signal) {
+    const c = String(code || "").trim().toUpperCase();
+    if (!c) return "";
+    try {
+        const res = await fetch(`${STATION_API_URL}${encodeURIComponent(c)}`, { signal });
+        if (!res.ok) return "";
+        const json = await res.json();
+        const hit = (json?.items || []).find(
+            (i) => String(i.station_code || "").toUpperCase() === c
+        );
+        return hit?.station_name || "";
+    } catch (err) {
+        return "";
+    }
+}
 
 const CLASS_NAMES = {
     SL: "Sleeper", "1A": "First AC", "2A": "AC 2 Tier", "3A": "AC 3 Tier",
@@ -38,20 +55,23 @@ const berthName = (code) => {
 };
 
 const LEGEND = [
+    ["CAN / MOD", "Cancelled or Modified Passenger"],
     ["CNF", "Confirmed (coach/berth shown after chart preparation)"],
     ["RAC", "Reservation Against Cancellation"],
     ["WL #", "Waiting List Number"],
-    ["GNWL", "General Wait List"],
     ["RLWL", "Remote Location Wait List"],
+    ["GNWL", "General Wait List"],
     ["PQWL", "Pooled Quota Wait List"],
-    ["TQWL", "Tatkal Quota Wait List"],
-    ["RQWL", "Roadside Quota Wait List"],
-    ["DPWL", "Duty Pass Wait List"],
-    ["CAN / MOD", "Cancelled or Modified Passenger"],
     ["REGRET/WL", "No More Booking Permitted"],
-    ["RELEASED", "Not cancelled, alternative accommodation provided"],
+    ["RELEASED", "Ticket not cancelled, alternative accommodation provided"],
+    ["R# #", "RAC Coach Number Berth Number"],
+    ["WEBCAN", "Railway Counter Ticket Passenger cancelled through internet and Refund not collected"],
+    ["WEBCANRF", "Railway Counter Ticket Passenger cancelled through internet and Refund collected"],
+    ["RQWL", "Roadside Quota Waitlist"],
+    ["DPWL", "Duty Pass Waitlist"],
+    ["TQWL", "Tatkal Quota Waitlist"],
     ["NT", "Passenger Not Turned Up"],
-    ["TDR", "Passenger has filed TDR"],
+    ["TDR", "Passenger has filed TDR"]
 ];
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -177,9 +197,37 @@ export default function PnrStatus() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [result, setResult] = useState(null);
+    const [stationNames, setStationNames] = useState({});
     const abortRef = useRef(null);
+    const stationCache = useRef({});
 
     useEffect(() => () => abortRef.current?.abort(), []);
+
+    // Resolve station codes to names whenever a new result arrives
+    useEffect(() => {
+        const d = result?.data;
+        if (!d) return;
+        const controller = new AbortController();
+        const codes = [...new Set([d.source_station, d.destination_station]
+            .map((c) => String(c || "").trim().toUpperCase())
+            .filter(Boolean))];
+        Promise.all(
+            codes.map(async (code) => {
+                if (stationCache.current[code] === undefined) {
+                    stationCache.current[code] = await fetchStationName(code, controller.signal);
+                }
+                return [code, stationCache.current[code]];
+            })
+        ).then((pairs) => {
+            if (!controller.signal.aborted) setStationNames(Object.fromEntries(pairs));
+        });
+        return () => controller.abort();
+    }, [result]);
+
+    const stnLabel = (code) => {
+        const c = String(code || "").trim().toUpperCase();
+        return stationNames[c] || code;
+    };
 
     const handleChange = (e) => {
         setPnr(e.target.value.replace(/\D/g, "").slice(0, 10));
@@ -282,7 +330,7 @@ export default function PnrStatus() {
 
                                 <div className="rl-route">
                                     <div className="rl-stn">
-                                        <b>{data.source_station}</b>
+                                        <b>{data.boarding_point}</b>
                                         <span>{fmtTime(data.journey_date)}</span>
                                         <small>{fmtDate(data.journey_date)}</small>
                                     </div>
@@ -315,14 +363,14 @@ export default function PnrStatus() {
 
                         {data.train_cancel_status && (
                             <>
-                            <h3 className="rl-sec">Train status</h3>
-                            <div className="rl-remark bad">{data.train_cancel_status}</div>
+                                <h3 className="rl-sec">Train status</h3>
+                                <div className="rl-remark bad">{data.train_cancel_status}</div>
                             </>
                         )}
                         {infoMessages.map((m, i) => (
                             <>
-                            <h3 className="rl-sec" key={`info-${i}`}>Remarks</h3>
-                            <div className="rl-remark" key={i}>{m}</div>
+                                <h3 className="rl-sec" key={`info-${i}`}>Remarks</h3>
+                                <div className="rl-remark" key={i}>{m}</div>
 
                             </>
                         ))}
@@ -336,9 +384,9 @@ export default function PnrStatus() {
                                     <div><dt>Arrival date &amp; time</dt><dd>{fmtDateTime(data.arrival_date)}</dd></div>
                                     <div><dt>Booked on</dt><dd>{fmtDateTime(data.booking_date)}</dd></div>
                                     <div><dt>Distance</dt><dd>{data.distance != null ? `${data.distance} KM` : "-"}</dd></div>
-                                    <div><dt>Boarding point</dt><dd>{data.boarding_point}</dd></div>
-                                    <div><dt>Reserved upto</dt><dd>{data.reservation_upto}</dd></div>
-                                    
+                                    <div><dt>Boarding point</dt><dd>{stnLabel(data.source_station)}</dd></div>
+                                    <div><dt>Reserved upto</dt><dd>{stnLabel(data.destination_station)}</dd></div>
+
                                     <div>
                                         <dt>Class</dt>
                                         <dd>{CLASS_NAMES[data.journey_class] ? `${CLASS_NAMES[data.journey_class]} (${data.journey_class})` : data.journey_class}</dd>
@@ -355,8 +403,8 @@ export default function PnrStatus() {
                                     <strong>{TICKET_TYPES[data.ticket_type] || data.ticket_type || "-"}</strong>
                                 </div>
                                 <div>
-                                    <small>Ticket fare</small>
-                                    <strong>{data.ticket_fare != null ? `₹${data.ticket_fare}` : "-"}</strong>
+                                    <small>Total fare</small>
+                                    <strong>{data.booking_fare != null ? `₹${data.booking_fare}` : "-"}</strong>
                                 </div>
                                 <div>
                                     <small>Charting</small>
