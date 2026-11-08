@@ -329,7 +329,7 @@ export default function PnrStatus() {
 
                                 <div className="rl-route">
                                     <div className="rl-stn">
-                                        <b title={data.source_station}>{stnLabel(data.source_station)}</b>
+                                        <b>{data.source_station}</b>
                                         <span>{fmtTime(data.journey_date)}</span>
                                         <small>{fmtDate(data.journey_date)}</small>
                                     </div>
@@ -339,7 +339,7 @@ export default function PnrStatus() {
                                         <small>{data.distance != null ? `${data.distance} KM` : ""}</small>
                                     </div>
                                     <div className="rl-stn end">
-                                        <b title={data.destination_station}>{stnLabel(data.destination_station)}</b>
+                                        <b>{data.destination_station}</b>
                                         <span>{fmtTime(data.arrival_date)}</span>
                                         <small>{fmtDate(data.arrival_date)}</small>
                                     </div>
@@ -382,8 +382,8 @@ export default function PnrStatus() {
                                     <div><dt>Arrival date &amp; time</dt><dd>{fmtDateTime(data.arrival_date)}</dd></div>
                                     <div><dt>Booked on</dt><dd>{fmtDateTime(data.booking_date)}</dd></div>
                                     <div><dt>Distance</dt><dd>{data.distance != null ? `${data.distance} KM` : "-"}</dd></div>
-                                    <div><dt>Boarding point</dt><dd>{data.boarding_point}</dd></div>
-                                    <div><dt>Reserved upto</dt><dd>{data.reservation_upto}</dd></div>
+                                    <div><dt>Boarding point</dt><dd>{stnLabel(data.source_station)}</dd></div>
+                                    <div><dt>Reserved upto</dt><dd>{stnLabel(data.reservation_upto)}</dd></div>
                                     <div>
                                         <dt>Class</dt>
                                         <dd>
