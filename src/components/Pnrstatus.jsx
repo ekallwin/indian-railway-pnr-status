@@ -314,10 +314,17 @@ export default function PnrStatus() {
                         </article>
 
                         {data.train_cancel_status && (
+                            <>
+                            <h3 className="rl-sec">Train status</h3>
                             <div className="rl-remark bad">{data.train_cancel_status}</div>
+                            </>
                         )}
                         {infoMessages.map((m, i) => (
+                            <>
+                            <h3 className="rl-sec" key={`info-${i}`}>Remarks</h3>
                             <div className="rl-remark" key={i}>{m}</div>
+
+                            </>
                         ))}
 
                         {/* 2. Booking details ticket */}
